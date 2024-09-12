@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
+import { RegistryService } from '@/services/RegistryService';
 import { Button } from 'primereact/button';
 import { Column } from 'primereact/column';
 import { DataTable } from 'primereact/datatable';
@@ -14,191 +15,191 @@ import { Toast } from 'primereact/toast';
 import { Toolbar } from 'primereact/toolbar';
 import { classNames } from 'primereact/utils';
 import React, { useEffect, useRef, useState } from 'react';
-import { ProductService } from '../../../../demo/service/ProductService';
-import { Demo } from '@/types';
+
 
 /* @todo Used 'as any' for types here. Will fix in next version due to onSelectionChange event type issue. */
 const Crud = () => {
-    let emptyProduct: Demo.Product = {
-        id: '',
-        name: '',
-        image: '',
+    let emptyRegistry: Projeto.Registry = {
+        value: 0,
+        id: undefined,
         description: '',
-        category: '',
-        price: 0,
-        quantity: 0,
-        rating: 0,
-        inventoryStatus: 'INSTOCK'
+        period: '',
+        person: 'TI',
+        status: 'RECEBIDO',
+        type: 'REVENUE'
     };
 
-    const [products, setProducts] = useState(null);
-    const [productDialog, setProductDialog] = useState(false);
-    const [deleteProductDialog, setDeleteProductDialog] = useState(false);
-    const [deleteProductsDialog, setDeleteProductsDialog] = useState(false);
-    const [product, setProduct] = useState<Demo.Product>(emptyProduct);
-    const [selectedProducts, setSelectedProducts] = useState(null);
+    const [registries, setRegistries] = useState<Projeto.Registry[]>([]);
+    const [registryDialog, setRegistryDialog] = useState(false);
+    const [deleteRegistryDialog, setDeleteRegistryDialog] = useState(false);
+    const [deleteRegistriesDialog, setDeleteRegistriesDialog] = useState(false);
+    const [registry, setRegistry] = useState<Projeto.Registry>(emptyRegistry);
+    const [selectedRegistries, setSelectedRegistries] = useState<Projeto.Registry[]>([]);
     const [submitted, setSubmitted] = useState(false);
     const [globalFilter, setGlobalFilter] = useState('');
     const toast = useRef<Toast>(null);
     const dt = useRef<DataTable<any>>(null);
+    const registryService = new RegistryService();
+
+
 
     useEffect(() => {
-        ProductService.getProducts().then((data) => setProducts(data as any));
-    }, []);
+        if (registries.length == 0) {
+            registryService.findall().then((response) => {
+                setRegistries(response.data)
+            }).catch((error) => {
+                console.log(error)
+            })
+        }
+    }, [registries]);
 
     const formatCurrency = (value: number) => {
-        return value.toLocaleString('en-US', {
+        return value.toLocaleString('pt-BR', {
             style: 'currency',
-            currency: 'USD'
+            currency: 'BRL'
         });
     };
 
     const openNew = () => {
-        setProduct(emptyProduct);
+        setRegistry(emptyRegistry);
         setSubmitted(false);
-        setProductDialog(true);
+        setRegistryDialog(true);
     };
 
     const hideDialog = () => {
         setSubmitted(false);
-        setProductDialog(false);
+        setRegistryDialog(false);
     };
 
-    const hideDeleteProductDialog = () => {
-        setDeleteProductDialog(false);
+    const hideDeleteRegistryDialog = () => {
+        setDeleteRegistryDialog(false);
     };
 
-    const hideDeleteProductsDialog = () => {
-        setDeleteProductsDialog(false);
+    const hideDeleteRegistriesDialog = () => {
+        setDeleteRegistriesDialog(false);
     };
 
-    const saveProduct = () => {
+    const saveRegistry = () => {
         setSubmitted(true);
 
-        if (product.name.trim()) {
-            let _products = [...(products as any)];
-            let _product = { ...product };
-            if (product.id) {
-                const index = findIndexById(product.id);
 
-                _products[index] = _product;
-                toast.current?.show({
-                    severity: 'success',
-                    summary: 'Successful',
-                    detail: 'Product Updated',
-                    life: 3000
-                });
-            } else {
-                _product.id = createId();
-                _product.image = 'product-placeholder.svg';
-                _products.push(_product);
-                toast.current?.show({
-                    severity: 'success',
-                    summary: 'Successful',
-                    detail: 'Product Created',
-                    life: 3000
-                });
-            }
-
-            setProducts(_products as any);
-            setProductDialog(false);
-            setProduct(emptyProduct);
-        }
+        registryService.create(registry).then((response) => {
+            setRegistryDialog(false);
+            setRegistry(emptyRegistry);
+            setRegistries([]);
+            toast.current?.show({
+                severity: 'success',
+                summary: 'Sucesso',
+                detail: 'Registro criado',
+                life: 3000
+            })
+        }).catch((error) => {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Erro',
+                detail: error.message,
+                life: 3000
+            })
+        })
     };
 
-    const editProduct = (product: Demo.Product) => {
-        setProduct({ ...product });
-        setProductDialog(true);
+    const editRegistry = (registry: Projeto.Registry) => {
+        setRegistry({ ...registry });
+        setRegistryDialog(true);
     };
 
-    const confirmDeleteProduct = (product: Demo.Product) => {
-        setProduct(product);
-        setDeleteProductDialog(true);
+    const confirmDeleteRegistry = (registry: Projeto.Registry) => {
+        setRegistry(registry);
+        setDeleteRegistryDialog(true);
     };
 
-    const deleteProduct = () => {
-        let _products = (products as any)?.filter((val: any) => val.id !== product.id);
-        setProducts(_products);
-        setDeleteProductDialog(false);
-        setProduct(emptyProduct);
-        toast.current?.show({
-            severity: 'success',
-            summary: 'Successful',
-            detail: 'Product Deleted',
-            life: 3000
+    const deleteRegistry = () => {
+        registryService.delete(registry.id!).then((response) => {
+            setDeleteRegistriesDialog(false);
+            setRegistry(emptyRegistry);
+            setRegistries([]);
+            toast.current?.show({
+                severity: 'success',
+                summary: 'Sucesso',
+                detail: 'Registro excluído',
+                life: 3000
+            });
+        }).catch((error) => {
+            toast.current?.show({
+                severity: 'error',
+                summary: 'Erro',
+                detail: error.message,
+                life: 3000
+            });
         });
+
     };
 
-    const findIndexById = (id: string) => {
-        let index = -1;
-        for (let i = 0; i < (products as any)?.length; i++) {
-            if ((products as any)[i].id === id) {
-                index = i;
-                break;
-            }
-        }
 
-        return index;
-    };
-
-    const createId = () => {
-        let id = '';
-        let chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-        for (let i = 0; i < 5; i++) {
-            id += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return id;
-    };
 
     const exportCSV = () => {
         dt.current?.exportCSV();
     };
 
     const confirmDeleteSelected = () => {
-        setDeleteProductsDialog(true);
+        setDeleteRegistriesDialog(true);
     };
 
-    const deleteSelectedProducts = () => {
-        let _products = (products as any)?.filter((val: any) => !(selectedProducts as any)?.includes(val));
-        setProducts(_products);
-        setDeleteProductsDialog(false);
-        setSelectedProducts(null);
-        toast.current?.show({
-            severity: 'success',
-            summary: 'Successful',
-            detail: 'Products Deleted',
-            life: 3000
+    const deleteSelectedRegistries = () => {
+        selectedRegistries.forEach((registry: Projeto.Registry) => {
+            if (registry.id) {
+                registryService.delete(registry.id)
+                    .then((response) => {
+                        setDeleteRegistriesDialog(false);
+                        setRegistries(registries.filter((r) => r.id !== registry.id));
+                        toast.current?.show({
+                            severity: 'success',
+                            summary: 'Sucesso',
+                            detail: 'Registro excluído',
+                            life: 3000
+                        });
+                    })
+                    .catch((error) => {
+                        toast.current?.show({
+                            severity: 'error',
+                            summary: 'Erro',
+                            detail: error.message,
+                            life: 3000
+                        });
+                    });
+            }
         });
+        setSelectedRegistries([]);
     };
 
-    const onCategoryChange = (e: RadioButtonChangeEvent) => {
-        let _product = { ...product };
-        _product['category'] = e.value;
-        setProduct(_product);
+    const onPersonChange = (e: RadioButtonChangeEvent) => {
+        let _registry = { ...registry };
+        _registry['person'] = e.value;
+        setRegistry(_registry);
     };
 
     const onInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>, name: string) => {
         const val = (e.target && e.target.value) || '';
-        let _product = { ...product };
-        _product[`${name}`] = val;
+        let _registry = { ...registry };
+        _registry[`${name}`] = val;
 
-        setProduct(_product);
+        setRegistry(_registry);
     };
 
-    const onInputNumberChange = (e: InputNumberValueChangeEvent, name: string) => {
-        const val = e.value || 0;
-        let _product = { ...product };
-        _product[`${name}`] = val;
+    // const onInputNumberChange = (e: InputNumberValueChangeEvent, name: string) => {
+    //     const val = e.value || 0;
+    //     let _registry = { ...registry };
+    //     _registry[`${name}`] = val;
 
-        setProduct(_product);
-    };
+    //     setRegistry(_registry);
+    // };
 
     const leftToolbarTemplate = () => {
         return (
             <React.Fragment>
                 <div className="my-2">
-                    <Button label="New" icon="pi pi-plus" severity="success" className=" mr-2" onClick={openNew} />
-                    <Button label="Delete" icon="pi pi-trash" severity="danger" onClick={confirmDeleteSelected} disabled={!selectedProducts || !(selectedProducts as any).length} />
+                    <Button label="Novo" icon="pi pi-plus" severity="success" className=" mr-2" onClick={openNew} />
+                    <Button label="Excluir" icon="pi pi-trash" severity="danger" onClick={confirmDeleteSelected} disabled={!selectedRegistries || !(selectedRegistries as any).length} />
                 </div>
             </React.Fragment>
         );
@@ -213,104 +214,86 @@ const Crud = () => {
         );
     };
 
-    const codeBodyTemplate = (rowData: Demo.Product) => {
+    const descriptionBodyTemplate = (rowData: Projeto.Registry) => {
         return (
             <>
-                <span className="p-column-title">Code</span>
-                {rowData.code}
+                <span className="p-column-title">Description</span>
+                {rowData.description}
             </>
         );
     };
 
-    const nameBodyTemplate = (rowData: Demo.Product) => {
+    const periodBodyTemplate = (rowData: Projeto.Registry) => {
         return (
             <>
-                <span className="p-column-title">Name</span>
-                {rowData.name}
+                <span className="p-column-title">Period</span>
+                {rowData.period}
             </>
         );
     };
 
-    const imageBodyTemplate = (rowData: Demo.Product) => {
+    const personBodyTemplate = (rowData: Projeto.Registry) => {
         return (
             <>
-                <span className="p-column-title">Image</span>
-                <img src={`/demo/images/product/${rowData.image}`} alt={rowData.image} className="shadow-2" width="100" />
+                <span className="p-column-title">Person</span>
+                {rowData.person}
             </>
         );
     };
 
-    const priceBodyTemplate = (rowData: Demo.Product) => {
-        return (
-            <>
-                <span className="p-column-title">Price</span>
-                {formatCurrency(rowData.price as number)}
-            </>
-        );
-    };
-
-    const categoryBodyTemplate = (rowData: Demo.Product) => {
-        return (
-            <>
-                <span className="p-column-title">Category</span>
-                {rowData.category}
-            </>
-        );
-    };
-
-    const ratingBodyTemplate = (rowData: Demo.Product) => {
-        return (
-            <>
-                <span className="p-column-title">Reviews</span>
-                <Rating value={rowData.rating} readOnly cancel={false} />
-            </>
-        );
-    };
-
-    const statusBodyTemplate = (rowData: Demo.Product) => {
+    const statusBodyTemplate = (rowData: Projeto.Registry) => {
         return (
             <>
                 <span className="p-column-title">Status</span>
-                <span className={`product-badge status-${rowData.inventoryStatus?.toLowerCase()}`}>{rowData.inventoryStatus}</span>
+                {rowData.status}
             </>
         );
     };
 
-    const actionBodyTemplate = (rowData: Demo.Product) => {
+    const typeBodyTemplate = (rowData: Projeto.Registry) => {
         return (
             <>
-                <Button icon="pi pi-pencil" rounded severity="success" className="mr-2" onClick={() => editProduct(rowData)} />
-                <Button icon="pi pi-trash" rounded severity="warning" onClick={() => confirmDeleteProduct(rowData)} />
+                <span className="p-column-title">Type</span>
+                {rowData.type}
+            </>
+        );
+    };
+
+    const actionBodyTemplate = (rowData: Projeto.Registry) => {
+        return (
+            <>
+                <Button icon="pi pi-pencil" rounded severity="success" className="mr-2" onClick={() => editRegistry(rowData)} />
+                <Button icon="pi pi-trash" rounded severity="warning" onClick={() => confirmDeleteRegistry(rowData)} />
             </>
         );
     };
 
     const header = (
         <div className="flex flex-column md:flex-row md:justify-content-between md:align-items-center">
-            <h5 className="m-0">Manage Products</h5>
+            <h5 className="m-0">Manage Registries</h5>
             <span className="block mt-2 md:mt-0 p-input-icon-left">
                 <i className="pi pi-search" />
-                <InputText type="search" onInput={(e) => setGlobalFilter(e.currentTarget.value)} placeholder="Search..." />
+                <InputText type="search" onInput={(e) => setGlobalFilter(e.currentTarget.value)} placeholder="Pesquisar..." />
             </span>
         </div>
     );
 
-    const productDialogFooter = (
+    const registryDialogFooter = (
         <>
-            <Button label="Cancel" icon="pi pi-times" text onClick={hideDialog} />
-            <Button label="Save" icon="pi pi-check" text onClick={saveProduct} />
+            <Button label="Cancelar" icon="pi pi-times" text onClick={hideDialog} />
+            <Button label="Salvar" icon="pi pi-check" text onClick={saveRegistry} />
         </>
     );
-    const deleteProductDialogFooter = (
+    const deleteRegistryDialogFooter = (
         <>
-            <Button label="No" icon="pi pi-times" text onClick={hideDeleteProductDialog} />
-            <Button label="Yes" icon="pi pi-check" text onClick={deleteProduct} />
+            <Button label="Não" icon="pi pi-times" text onClick={hideDeleteRegistryDialog} />
+            <Button label="Sim" icon="pi pi-check" text onClick={deleteRegistry} />
         </>
     );
-    const deleteProductsDialogFooter = (
+    const deleteRegistriesDialogFooter = (
         <>
-            <Button label="No" icon="pi pi-times" text onClick={hideDeleteProductsDialog} />
-            <Button label="Yes" icon="pi pi-check" text onClick={deleteSelectedProducts} />
+            <Button label="Não" icon="pi pi-times" text onClick={hideDeleteRegistriesDialog} />
+            <Button label="Sim" icon="pi pi-check" text onClick={deleteSelectedRegistries} />
         </>
     );
 
@@ -323,102 +306,81 @@ const Crud = () => {
 
                     <DataTable
                         ref={dt}
-                        value={products}
-                        selection={selectedProducts}
-                        onSelectionChange={(e) => setSelectedProducts(e.value as any)}
+                        value={registries}
+                        selection={selectedRegistries}
+                        onSelectionChange={(e) => setSelectedRegistries(e.value as any)}
                         dataKey="id"
                         paginator
                         rows={10}
                         rowsPerPageOptions={[5, 10, 25]}
                         className="datatable-responsive"
                         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-                        currentPageReportTemplate="Showing {first} to {last} of {totalRecords} products"
+                        currentPageReportTemplate="Mostrando {first} até {last} de {totalRecords} registros"
                         globalFilter={globalFilter}
-                        emptyMessage="No products found."
+                        emptyMessage="Registros não encontrados."
                         header={header}
                         responsiveLayout="scroll"
                     >
                         <Column selectionMode="multiple" headerStyle={{ width: '4rem' }}></Column>
-                        <Column field="code" header="Code" sortable body={codeBodyTemplate} headerStyle={{ minWidth: '15rem' }}></Column>
-                        <Column field="name" header="Name" sortable body={nameBodyTemplate} headerStyle={{ minWidth: '15rem' }}></Column>
-                        <Column header="Image" body={imageBodyTemplate}></Column>
-                        <Column field="price" header="Price" body={priceBodyTemplate} sortable></Column>
-                        <Column field="category" header="Category" sortable body={categoryBodyTemplate} headerStyle={{ minWidth: '10rem' }}></Column>
-                        <Column field="rating" header="Reviews" body={ratingBodyTemplate} sortable></Column>
-                        <Column field="inventoryStatus" header="Status" body={statusBodyTemplate} sortable headerStyle={{ minWidth: '10rem' }}></Column>
+                        <Column field="description" header="Descrição" sortable body={descriptionBodyTemplate} headerStyle={{ minWidth: '15rem' }}></Column>
+                        <Column field="period" header="Período" sortable body={periodBodyTemplate} headerStyle={{ minWidth: '15rem' }}></Column>
+                        <Column field="person" header="Pessoa" sortable body={personBodyTemplate} headerStyle={{ minWidth: '15rem' }}></Column>
+                        <Column field="status" header="Status" sortable body={statusBodyTemplate} headerStyle={{ minWidth: '15rem' }}></Column>
+                        <Column field="type" header="Tipo" sortable body={typeBodyTemplate} headerStyle={{ minWidth: '15rem' }}></Column>
                         <Column body={actionBodyTemplate} headerStyle={{ minWidth: '10rem' }}></Column>
                     </DataTable>
 
-                    <Dialog visible={productDialog} style={{ width: '450px' }} header="Product Details" modal className="p-fluid" footer={productDialogFooter} onHide={hideDialog}>
-                        {product.image && <img src={`/demo/images/product/${product.image}`} alt={product.image} width="150" className="mt-0 mx-auto mb-5 block shadow-2" />}
+                    <Dialog visible={registryDialog} style={{ width: '450px' }} header="Detalhes do registro" modal className="p-fluid" footer={registryDialogFooter} onHide={hideDialog}>
                         <div className="field">
-                            <label htmlFor="name">Name</label>
-                            <InputText
-                                id="name"
-                                value={product.name}
-                                onChange={(e) => onInputChange(e, 'name')}
-                                required
-                                autoFocus
-                                className={classNames({
-                                    'p-invalid': submitted && !product.name
-                                })}
-                            />
-                            {submitted && !product.name && <small className="p-invalid">Name is required.</small>}
-                        </div>
-                        <div className="field">
-                            <label htmlFor="description">Description</label>
-                            <InputTextarea id="description" value={product.description} onChange={(e) => onInputChange(e, 'description')} required rows={3} cols={20} />
+                            <label htmlFor="description">Descrição</label>
+                            <InputTextarea id="description" value={registry.description} onChange={(e) => onInputChange(e, 'description')} required rows={3} cols={20} />
                         </div>
 
                         <div className="field">
-                            <label className="mb-3">Category</label>
+                            <label htmlFor="period">Período</label>
+                            <InputText id="period" value={registry.period} onChange={(e) => onInputChange(e, 'period')} />
+                        </div>
+
+                        <div className="field">
+                            <label className="mb-3">Pessoa</label>
                             <div className="formgrid grid">
                                 <div className="field-radiobutton col-6">
-                                    <RadioButton inputId="category1" name="category" value="Accessories" onChange={onCategoryChange} checked={product.category === 'Accessories'} />
-                                    <label htmlFor="category1">Accessories</label>
+                                    <RadioButton inputId="person1" name="person" value="TI" onChange={onPersonChange} checked={registry.person === 'TI'} />
+                                    <label htmlFor="person1">TI</label>
                                 </div>
                                 <div className="field-radiobutton col-6">
-                                    <RadioButton inputId="category2" name="category" value="Clothing" onChange={onCategoryChange} checked={product.category === 'Clothing'} />
-                                    <label htmlFor="category2">Clothing</label>
-                                </div>
-                                <div className="field-radiobutton col-6">
-                                    <RadioButton inputId="category3" name="category" value="Electronics" onChange={onCategoryChange} checked={product.category === 'Electronics'} />
-                                    <label htmlFor="category3">Electronics</label>
-                                </div>
-                                <div className="field-radiobutton col-6">
-                                    <RadioButton inputId="category4" name="category" value="Fitness" onChange={onCategoryChange} checked={product.category === 'Fitness'} />
-                                    <label htmlFor="category4">Fitness</label>
+                                    <RadioButton inputId="person2" name="person" value="GABI" onChange={onPersonChange} checked={registry.person === 'GABI'} />
+                                    <label htmlFor="person2">GABI</label>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="formgrid grid">
-                            <div className="field col">
-                                <label htmlFor="price">Price</label>
-                                <InputNumber id="price" value={product.price} onValueChange={(e) => onInputNumberChange(e, 'price')} mode="currency" currency="USD" locale="en-US" />
-                            </div>
-                            <div className="field col">
-                                <label htmlFor="quantity">Quantity</label>
-                                <InputNumber id="quantity" value={product.quantity} onValueChange={(e) => onInputNumberChange(e, 'quantity')} />
-                            </div>
+                        <div className="field">
+                            <label htmlFor="status">Status</label>
+                            <InputText id="status" value={registry.status} onChange={(e) => onInputChange(e, 'status')} />
+                        </div>
+
+                        <div className="field">
+                            <label htmlFor="type">Tipo</label>
+                            <InputText id="type" value={registry.type} onChange={(e) => onInputChange(e, 'type')} />
                         </div>
                     </Dialog>
 
-                    <Dialog visible={deleteProductDialog} style={{ width: '450px' }} header="Confirm" modal footer={deleteProductDialogFooter} onHide={hideDeleteProductDialog}>
+                    <Dialog visible={deleteRegistryDialog} style={{ width: '450px' }} header="Confirmar" modal footer={deleteRegistryDialogFooter} onHide={hideDeleteRegistryDialog}>
                         <div className="flex align-items-center justify-content-center">
                             <i className="pi pi-exclamation-triangle mr-3" style={{ fontSize: '2rem' }} />
-                            {product && (
+                            {registry && (
                                 <span>
-                                    Are you sure you want to delete <b>{product.name}</b>?
+                                    Certeza que quer excluir <b>{registry.description}</b>?
                                 </span>
                             )}
                         </div>
                     </Dialog>
 
-                    <Dialog visible={deleteProductsDialog} style={{ width: '450px' }} header="Confirm" modal footer={deleteProductsDialogFooter} onHide={hideDeleteProductsDialog}>
+                    <Dialog visible={deleteRegistriesDialog} style={{ width: '450px' }} header="Confirmar" modal footer={deleteRegistriesDialogFooter} onHide={hideDeleteRegistriesDialog}>
                         <div className="flex align-items-center justify-content-center">
                             <i className="pi pi-exclamation-triangle mr-3" style={{ fontSize: '2rem' }} />
-                            {product && <span>Are you sure you want to delete the selected products?</span>}
+                            {registry && <span>Certeza que deseja excluir os registros selecionados?</span>}
                         </div>
                     </Dialog>
                 </div>
@@ -428,3 +390,5 @@ const Crud = () => {
 };
 
 export default Crud;
+
+
