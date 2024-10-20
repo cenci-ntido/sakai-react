@@ -240,7 +240,7 @@ const Crud = () => {
             </>
         );
     };
-
+    //
     const statusBodyTemplate = (rowData: Projeto.Registry) => {
         return (
             <>
